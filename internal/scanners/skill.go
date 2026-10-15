@@ -26,8 +26,13 @@ var (
 		regexp.MustCompile(`(?i)(send|post)\s+.*(to\s+https?://)`),
 	}
 
-	// Sensitive file references in instructions
-	sensitiveFilePattern = regexp.MustCompile(`(?i)(\.env|\.aws/credentials|\.ssh/(id_rsa|id_ed25519|known_hosts)|/etc/passwd|/etc/shadow|ntds\.dit|wallet\.dat)`)
+	// Sensitive file references in instructions.
+	// The .env branch uses a negative lookahead-free guard: `.env` must NOT be
+	// followed by another letter, so real filenames like `.env` / `.env.local`
+	// match while `os.environ`, `process.env` (followed by nothing) and words
+	// like `.environment` do not produce false positives. A trailing `.` (as in
+	// `.env.local`) or non-letter boundary is required.
+	sensitiveFilePattern = regexp.MustCompile(`(?i)(\.env(\.[a-z0-9]+)?\b|\.aws/credentials|\.ssh/(id_rsa|id_ed25519|known_hosts)|/etc/passwd|/etc/shadow|ntds\.dit|wallet\.dat)`)
 
 	// Zero-width / invisible characters used to hide prompt injections
 	zeroWidthRegex = regexp.MustCompile(`[\x{200B}-\x{200D}\x{FEFF}\x{200E}\x{200F}\x{00AD}]`)
@@ -61,15 +66,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 		// 1. Check for invisible characters (zero-width chars)
 		if zeroWidthRegex.MatchString(line) {
 			findings = append(findings, model.Finding{
-				ID:       fmt.Sprintf("SKILL-ZW-%d", lineNum),
-				RuleID:   "SKL-001",
-				Title:    "Invisible / Zero-Width Unicode Characters Detected",
-				Severity: model.SeverityHigh,
-				Category: model.CatPromptInjection,
-				File:     filePath,
-				Line:     lineNum,
-				Snippet:  sanitizeSnippet(line),
-				Description: "The markdown line contains hidden/zero-width characters. Attackers often use invisible unicode to hide malicious instructions from human reviewers while LLMs still parse them.",
+				ID:             fmt.Sprintf("SKILL-ZW-%d", lineNum),
+				RuleID:         "SKL-001",
+				Title:          "Invisible / Zero-Width Unicode Characters Detected",
+				Severity:       model.SeverityHigh,
+				Category:       model.CatPromptInjection,
+				File:           filePath,
+				Line:           lineNum,
+				Snippet:        sanitizeSnippet(line),
+				Description:    "The markdown line contains hidden/zero-width characters. Attackers often use invisible unicode to hide malicious instructions from human reviewers while LLMs still parse them.",
 				Recommendation: "Strip all zero-width characters and verify if any hidden instructions were embedded.",
 			})
 		}
@@ -81,15 +86,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 				urlLower := strings.ToLower(url)
 				if strings.Contains(urlLower, "?") && (strings.Contains(urlLower, "token") || strings.Contains(urlLower, "data") || strings.Contains(urlLower, "secret") || strings.Contains(urlLower, "leak") || strings.Contains(urlLower, "env")) {
 					findings = append(findings, model.Finding{
-						ID:       fmt.Sprintf("SKILL-IMGLEAK-%d", lineNum),
-						RuleID:   "SKL-002",
-						Title:    "Potential Markdown Image Exfiltration Tunnel",
-						Severity: model.SeverityCritical,
-						Category: model.CatNetworkEgress,
-						File:     filePath,
-						Line:     lineNum,
-						Snippet:  match[0],
-						Description: fmt.Sprintf("Markdown image tags can trigger automated HTTP GET requests when rendered in markdown viewers/chat interfaces, exfiltrating data via URL query parameters: %s", url),
+						ID:             fmt.Sprintf("SKILL-IMGLEAK-%d", lineNum),
+						RuleID:         "SKL-002",
+						Title:          "Potential Markdown Image Exfiltration Tunnel",
+						Severity:       model.SeverityCritical,
+						Category:       model.CatNetworkEgress,
+						File:           filePath,
+						Line:           lineNum,
+						Snippet:        match[0],
+						Description:    fmt.Sprintf("Markdown image tags can trigger automated HTTP GET requests when rendered in markdown viewers/chat interfaces, exfiltrating data via URL query parameters: %s", url),
 						Recommendation: "Disallow dynamic URL parameters in image tags that could carry confidential environment variables or tokens.",
 					})
 				}
@@ -99,15 +104,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 		// 3. Check for suspicious webhook / data collector domains
 		if exfilDomainRegex.MatchString(line) {
 			findings = append(findings, model.Finding{
-				ID:       fmt.Sprintf("SKILL-EXFILDOM-%d", lineNum),
-				RuleID:   "SKL-003",
-				Title:    "Suspicious Data Collector / Tunnel Domain",
-				Severity: model.SeverityHigh,
-				Category: model.CatNetworkEgress,
-				File:     filePath,
-				Line:     lineNum,
-				Snippet:  sanitizeSnippet(line),
-				Description: "Reference to public request-catching/tunneling service commonly used in proof-of-concept exfiltration attacks.",
+				ID:             fmt.Sprintf("SKILL-EXFILDOM-%d", lineNum),
+				RuleID:         "SKL-003",
+				Title:          "Suspicious Data Collector / Tunnel Domain",
+				Severity:       model.SeverityHigh,
+				Category:       model.CatNetworkEgress,
+				File:           filePath,
+				Line:           lineNum,
+				Snippet:        sanitizeSnippet(line),
+				Description:    "Reference to public request-catching/tunneling service commonly used in proof-of-concept exfiltration attacks.",
 				Recommendation: "Verify why this public tunneling service is referenced. Ensure it is not intended as an exfiltration sink.",
 			})
 		}
@@ -116,15 +121,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 		for _, re := range promptInjectionRegexes {
 			if match := re.FindString(line); match != "" {
 				findings = append(findings, model.Finding{
-					ID:       fmt.Sprintf("SKILL-INJECT-%d", lineNum),
-					RuleID:   "SKL-004",
-					Title:    "Prompt Injection / Guardrail Override Keyword",
-					Severity: model.SeverityHigh,
-					Category: model.CatPromptInjection,
-					File:     filePath,
-					Line:     lineNum,
-					Snippet:  sanitizeSnippet(line),
-					Description: fmt.Sprintf("Found suspicious prompt instruction pattern: '%s'. This may attempt to bypass agent guardrails.", match),
+					ID:             fmt.Sprintf("SKILL-INJECT-%d", lineNum),
+					RuleID:         "SKL-004",
+					Title:          "Prompt Injection / Guardrail Override Keyword",
+					Severity:       model.SeverityHigh,
+					Category:       model.CatPromptInjection,
+					File:           filePath,
+					Line:           lineNum,
+					Snippet:        sanitizeSnippet(line),
+					Description:    fmt.Sprintf("Found suspicious prompt instruction pattern: '%s'. This may attempt to bypass agent guardrails.", match),
 					Recommendation: "Review skill instructions to ensure prompts cannot trick the model into overriding system security instructions.",
 				})
 				break
@@ -137,15 +142,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 		cleanLine = strings.ReplaceAll(cleanLine, ".env.template", "")
 		if match := sensitiveFilePattern.FindString(cleanLine); match != "" {
 			findings = append(findings, model.Finding{
-				ID:       fmt.Sprintf("SKILL-SENSFILE-%d", lineNum),
-				RuleID:   "SKL-005",
-				Title:    fmt.Sprintf("Sensitive Credential File Targeted: %s", match),
-				Severity: model.SeverityMedium,
-				Category: model.CatSensitiveFileRead,
-				File:     filePath,
-				Line:     lineNum,
-				Snippet:  sanitizeSnippet(line),
-				Description: fmt.Sprintf("Skill instructions specifically target '%s'. If the agent is instructed to read this, it could be exposed in conversation context.", match),
+				ID:             fmt.Sprintf("SKILL-SENSFILE-%d", lineNum),
+				RuleID:         "SKL-005",
+				Title:          fmt.Sprintf("Sensitive Credential File Targeted: %s", match),
+				Severity:       model.SeverityMedium,
+				Category:       model.CatSensitiveFileRead,
+				File:           filePath,
+				Line:           lineNum,
+				Snippet:        sanitizeSnippet(line),
+				Description:    fmt.Sprintf("Skill instructions specifically target '%s'. If the agent is instructed to read this, it could be exposed in conversation context.", match),
 				Recommendation: "Ensure access to credentials and .env files is masked or restricted via Samar middleware.",
 			})
 		}
@@ -153,15 +158,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 		// 6. Check for system tag and role spoofing (token manipulation)
 		if match := systemTagRegex.FindString(line); match != "" {
 			findings = append(findings, model.Finding{
-				ID:       fmt.Sprintf("SKILL-TAGSPOOF-%d", lineNum),
-				RuleID:   "SKL-006",
-				Title:    fmt.Sprintf("System Role / Delimiter Spoofing Detected: %s", match),
-				Severity: model.SeverityHigh,
-				Category: model.CatPromptInjection,
-				File:     filePath,
-				Line:     lineNum,
-				Snippet:  sanitizeSnippet(line),
-				Description: fmt.Sprintf("Line contains privileged system/delimiter token '%s'. Attackers inject these tokens to impersonate system-level instructions and trick LLM tokenizers.", match),
+				ID:             fmt.Sprintf("SKILL-TAGSPOOF-%d", lineNum),
+				RuleID:         "SKL-006",
+				Title:          fmt.Sprintf("System Role / Delimiter Spoofing Detected: %s", match),
+				Severity:       model.SeverityHigh,
+				Category:       model.CatPromptInjection,
+				File:           filePath,
+				Line:           lineNum,
+				Snippet:        sanitizeSnippet(line),
+				Description:    fmt.Sprintf("Line contains privileged system/delimiter token '%s'. Attackers inject these tokens to impersonate system-level instructions and trick LLM tokenizers.", match),
 				Recommendation: "Strip special tokenizer system tokens and delimit user inputs using standard markdown or xml structures.",
 			})
 		}
@@ -169,15 +174,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 		// 7. Check for hidden HTML / CSS steganography
 		if match := hiddenHtmlRegex.FindString(line); match != "" {
 			findings = append(findings, model.Finding{
-				ID:       fmt.Sprintf("SKILL-HIDDEN-%d", lineNum),
-				RuleID:   "SKL-007",
-				Title:    "Hidden Content via HTML / CSS Detected",
-				Severity: model.SeverityMedium,
-				Category: model.CatPromptInjection,
-				File:     filePath,
-				Line:     lineNum,
-				Snippet:  sanitizeSnippet(line),
-				Description: "HTML/CSS styling appears to conceal text from human reviewers (e.g. display:none or hidden attribute) while still being ingested by the LLM.",
+				ID:             fmt.Sprintf("SKILL-HIDDEN-%d", lineNum),
+				RuleID:         "SKL-007",
+				Title:          "Hidden Content via HTML / CSS Detected",
+				Severity:       model.SeverityMedium,
+				Category:       model.CatPromptInjection,
+				File:           filePath,
+				Line:           lineNum,
+				Snippet:        sanitizeSnippet(line),
+				Description:    "HTML/CSS styling appears to conceal text from human reviewers (e.g. display:none or hidden attribute) while still being ingested by the LLM.",
 				Recommendation: "Remove hidden elements and ensure all prompt instructions are transparently visible.",
 			})
 		}
@@ -185,15 +190,15 @@ func ScanSkillFile(filePath string) ([]model.Finding, error) {
 		// 8. Check for destructive execution directives
 		if match := destructiveDirectiveRegex.FindString(line); match != "" {
 			findings = append(findings, model.Finding{
-				ID:       fmt.Sprintf("SKILL-DESTRUCT-%d", lineNum),
-				RuleID:   "SKL-008",
-				Title:    fmt.Sprintf("Destructive Execution Directive: %s", match),
-				Severity: model.SeverityHigh,
-				Category: model.CatExcessiveAgency,
-				File:     filePath,
-				Line:     lineNum,
-				Snippet:  sanitizeSnippet(line),
-				Description: fmt.Sprintf("Skill instructions reference high-impact destructive commands ('%s') without explicit human-in-the-loop safeguards.", match),
+				ID:             fmt.Sprintf("SKILL-DESTRUCT-%d", lineNum),
+				RuleID:         "SKL-008",
+				Title:          fmt.Sprintf("Destructive Execution Directive: %s", match),
+				Severity:       model.SeverityHigh,
+				Category:       model.CatExcessiveAgency,
+				File:           filePath,
+				Line:           lineNum,
+				Snippet:        sanitizeSnippet(line),
+				Description:    fmt.Sprintf("Skill instructions reference high-impact destructive commands ('%s') without explicit human-in-the-loop safeguards.", match),
 				Recommendation: "Require human approval and provide safe dry-run flags for irreversible filesystem or database operations.",
 			})
 		}

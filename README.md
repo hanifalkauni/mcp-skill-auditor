@@ -30,7 +30,7 @@ flowchart LR
     subgraph Engine ["Engine: mcp-skill-auditor (Go CLI)"]
         direction TB
         DEC["Orchestrator & File Walker"]
-        RUL["Rule Catalog Evaluator<br/>(22 Security Rules)"]
+        RUL["Rule Catalog Evaluator<br/>(25 Security Rules)"]
         DEC --> RUL
     end
 
@@ -73,6 +73,7 @@ flowchart LR
 mcp-skill-auditor/
 ├── .github/
 │   └── workflows/
+│       ├── ci.yml           # Test, vet & build verification on push/PR
 │       └── release.yml      # Multi-platform CI/CD release workflow
 ├── auditor.exe              # Pre-compiled standalone binary (Go 1.24, zero dependencies)
 ├── go.mod                   # Go module definition (Standard library only)
@@ -84,7 +85,7 @@ mcp-skill-auditor/
 │       └── main.go          # CLI entrypoint (argument parsing, flags, auto-discovery)
 └── internal/
     ├── auditor/
-    │   ├── auditor.go       # Engine orchestrator & parallel file walker
+    │   ├── auditor.go       # Engine orchestrator & recursive file walker
     │   ├── model.go         # Model type aliases
     │   └── report.go        # Terminal, Markdown, and JSON report formatters
     ├── model/
@@ -172,6 +173,7 @@ Exits with status code `1` if findings meet or exceed a specific severity thresh
 
 | Rule ID | Category | Severity | Description |
 | :--- | :--- | :---: | :--- |
+| `CFG-000` | `SECURITY_CONFIG` | **LOW** | MCP config found but unreadable or contains invalid JSON syntax |
 | `CFG-001` | `SECRET_LEAK` | **CRITICAL** | Plaintext credential or PAT stored inside `mcp_config.json` |
 | `CFG-002` | `SECRET_LEAK` | **HIGH** | High-entropy string pattern (JWT, API key) in configuration |
 | `CFG-003` | `SUPPLY_CHAIN_RISK` | **MEDIUM** | Unpinned package dependency tag (`@latest`) |

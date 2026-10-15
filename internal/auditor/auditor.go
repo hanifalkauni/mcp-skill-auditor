@@ -12,7 +12,6 @@ import (
 )
 
 type AuditOptions struct {
-	ConfigFile  string
 	ConfigFiles []string
 	SkillDirs   []string
 	TargetDirs  []string
@@ -39,11 +38,8 @@ func (e *Engine) Run() (*AuditReport, error) {
 
 	// 1. Scan MCP Configs
 	var allConfigs []string
-	if e.opts.ConfigFile != "" {
-		allConfigs = append(allConfigs, e.opts.ConfigFile)
-	}
 	for _, c := range e.opts.ConfigFiles {
-		if c != "" && c != e.opts.ConfigFile {
+		if c != "" {
 			allConfigs = append(allConfigs, c)
 		}
 	}
@@ -53,6 +49,19 @@ func (e *Engine) Run() (*AuditReport, error) {
 			scannedFiles[cfgPath] = true
 			findings, err := scanners.ScanMCPConfig(cfgPath)
 			if err != nil {
+				// Never let an unparseable config look identical to a clean
+				// one. Surface it as a finding and warn on stderr.
+				report.AddFinding(Finding{
+					ID:             fmt.Sprintf("CFG-PARSE-%s", cfgPath),
+					RuleID:         "CFG-000",
+					Title:          "MCP Config Could Not Be Parsed",
+					Description:    fmt.Sprintf("The config file was found but could not be read or parsed, so it was NOT audited: %v", err),
+					Severity:       SeverityLow,
+					Category:       CatSecurityConfig,
+					File:           cfgPath,
+					Recommendation: "Verify the file is valid JSON (and free of encoding issues) so it can be scanned for secrets and risks.",
+				})
+				fmt.Fprintf(os.Stderr, "warning: skipped unparseable config %s: %v\n", cfgPath, err)
 				continue
 			}
 			for _, f := range findings {
@@ -76,7 +85,7 @@ func (e *Engine) Run() (*AuditReport, error) {
 			}
 			if d.IsDir() {
 				name := d.Name()
-				if name == ".git" || name == "node_modules" || name == "vendor" {
+				if name == ".git" || name == "node_modules" || name == "vendor" || name == ".venv" || name == "__pycache__" || name == "dist" || name == "bin" || name == "mcp-skill-auditor" {
 					return filepath.SkipDir
 				}
 				return nil
@@ -145,7 +154,7 @@ func (e *Engine) Run() (*AuditReport, error) {
 			}
 			if d.IsDir() {
 				name := d.Name()
-				if name == ".git" || name == "node_modules" || name == "vendor" || name == ".venv" || name == "mcp-skill-auditor" {
+				if name == ".git" || name == "node_modules" || name == "vendor" || name == ".venv" || name == "__pycache__" || name == "dist" || name == "bin" || name == "mcp-skill-auditor" {
 					return filepath.SkipDir
 				}
 				return nil

@@ -30,7 +30,7 @@ flowchart LR
     subgraph Engine ["Engine: mcp-skill-auditor (Go CLI)"]
         direction TB
         DEC["Orchestrator & File Walker"]
-        RUL["Rule Catalog Evaluator<br/>(22 Security Rules)"]
+        RUL["Rule Catalog Evaluator<br/>(25 Security Rules)"]
         DEC --> RUL
     end
 
@@ -71,6 +71,10 @@ flowchart LR
 
 ```text
 mcp-skill-auditor/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml           # Verifikasi test, vet & build pada push/PR
+│       └── release.yml      # Workflow rilis CI/CD multi-platform
 ├── auditor.exe              # Executable mandiri terkompilasi (Go 1.24, zero external dependencies)
 ├── go.mod                   # Definisi modul Go (standard library)
 ├── README.md                # Dokumentasi bahasa Inggris (English)
@@ -81,7 +85,7 @@ mcp-skill-auditor/
 │       └── main.go          # CLI entrypoint (argument parsing, flags, auto-discovery)
 └── internal/
     ├── auditor/
-    │   ├── auditor.go       # Engine orchestrator & parallel file walker
+    │   ├── auditor.go       # Orkestrator engine & penelusur file rekursif
     │   ├── model.go         # Model type aliases
     │   └── report.go        # Generator laporan Terminal, Markdown, dan JSON
     ├── model/
@@ -169,6 +173,7 @@ Keluar dengan *exit code 1* jika ditemukan isu dengan tingkat keparahan tertentu
 
 | Rule ID | Kategori | Severity | Deskripsi |
 | :--- | :--- | :---: | :--- |
+| `CFG-000` | `SECURITY_CONFIG` | **LOW** | File konfigurasi MCP ditemukan namun gagal dibaca / sintaks JSON rusak |
 | `CFG-001` | `SECRET_LEAK` | **CRITICAL** | Kredensial / PAT tersimpan plaintext pada `mcp_config.json` |
 | `CFG-002` | `SECRET_LEAK` | **HIGH** | String dengan entropi tinggi (pola token/JWT) pada konfigurasi |
 | `CFG-003` | `SUPPLY_CHAIN_RISK` | **MEDIUM** | Menggunakan tag `@latest` tanpa pinning versi spesifik |

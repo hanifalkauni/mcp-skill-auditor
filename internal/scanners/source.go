@@ -85,7 +85,7 @@ var sourceRules = []sourceRule{
 		Description:    "Code attempts to directly open or read confidential files like .env or private keys.",
 		Severity:       model.SeverityHigh,
 		Category:       model.CatSensitiveFileRead,
-		Pattern:        regexp.MustCompile(`(?i)["'].*(\.env|id_rsa|id_ed25519|\.aws/credentials)["']`),
+		Pattern:        regexp.MustCompile(`(?i)["'][^"']*(\.env(\.[a-z0-9]+)?["']|id_rsa|id_ed25519|\.aws/credentials)`),
 		Extensions:     []string{".py", ".js", ".ts", ".go", ".sh", ".ps1"},
 		Recommendation: "Avoid hardcoding access to sensitive files. Use a dedicated masking vault like Samar.",
 	},

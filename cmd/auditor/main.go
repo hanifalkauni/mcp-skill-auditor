@@ -21,7 +21,7 @@ func main() {
 	formatFlag := flag.String("format", "terminal", "Output format: terminal | markdown | json")
 	outFlag := flag.String("out", "", "File path to write report output (default: stdout)")
 	noColorFlag := flag.Bool("no-color", false, "Disable ANSI colors in terminal output")
-	failOnFlag := flag.String("fail-on", "", "Exit with status code 1 if findings reach or exceed severity (CRITICAL, HIGH, MEDIUM, LOW)")
+	failOnFlag := flag.String("fail-on", "", "Exit with status code 1 if findings reach or exceed severity (CRITICAL, HIGH, MEDIUM, LOW, INFO)")
 	versionFlag := flag.Bool("v", false, "Print auditor version and exit")
 
 	flag.Usage = func() {

@@ -54,7 +54,7 @@ const (
 	CatSensitiveFileRead Category = "SENSITIVE_FILE_ACCESS"
 	CatSSRF              Category = "SSRF_PROBING"
 	CatPathTraversal     Category = "PATH_TRAVERSAL"
-	CatSecurityConfig    Category = "SECURITY_CONFIGURATION"
+	CatSecurityConfig    Category = "SECURITY_CONFIG"
 	CatExcessiveAgency   Category = "EXCESSIVE_AGENCY"
 )
 
